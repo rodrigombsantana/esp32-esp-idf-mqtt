@@ -4,8 +4,8 @@ use esp_idf_svc::{eventloop::EspSystemEventLoop, hal::{delay::FreeRtos, gpio::Pi
 //libs para wifi
 use esp_idf_svc::{nvs::EspDefaultNvsPartition, wifi::{ClientConfiguration, Configuration, EspWifi}};
 //libs para mqtt
-use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration};
-use embedded_svc::mqtt::client::{EventPayload,QoS};
+use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration,EventPayload,QoS};
+//use embedded_svc::mqtt::client::{,};
 
 
 const SSID: &str = env!("SSID");
@@ -19,13 +19,12 @@ fn main() {
     log::info!("Cliente MQTT com esp-idf");
     
 
-    let peripherals = Peripherals::take().unwrap();
-    let sysloop = EspSystemEventLoop::take().unwrap();
-    let nvs = EspDefaultNvsPartition::take().unwrap();
-    
+    let peripherals = Peripherals::take().unwrap();//obter acesso perifericos
+    let sysloop = EspSystemEventLoop::take().unwrap();//obter acesso ao systemloop
+    let nvs = EspDefaultNvsPartition::take().unwrap();//obter acesso a Non-Volatile Storage, necessário para o driver Wifi
     let mut wifi_driver = EspWifi::new(peripherals.modem, sysloop, Some(nvs)).unwrap();
-    
-// Configuração do cliente WiFi
+    let mut led = PinDriver::output(peripherals.pins.gpio2).unwrap();//configura o LED
+    // Configuração do cliente WiFi
     wifi_driver.set_configuration(&Configuration::Client(ClientConfiguration {
         ssid: SSID.try_into().unwrap(),
         password: PASSWORD.try_into().unwrap(),
@@ -34,15 +33,10 @@ fn main() {
      // Início do WiFi
     wifi_driver.start().unwrap();
     println!("Wifi Iniciado? : {:?}", wifi_driver.is_started());    
-    //configura o LED
-    let mut led = PinDriver::output(peripherals.pins.gpio2).unwrap();
-
-    
+        
     println!("Wifi Conectando... {:?}", wifi_driver.connect());
 
-    // wait to get connected
-    //println!("Wait to get connected");
-    let mut c =1;
+    let mut c =0;
     loop {
         c+=1;
         println!("Tentativa de Conexao #{c}");
@@ -50,7 +44,7 @@ fn main() {
         match res {
             Ok(connected) => {
                 if connected {
-                    break;
+                    break;// sai do loop e vai para próximo passo
                 }
             }
             Err(err) => {
@@ -58,15 +52,11 @@ fn main() {
                 loop {}
             }
         }
-        FreeRtos::delay_ms(1000u32);
+        FreeRtos::delay_ms(1000u32);//delay antes de proxima verificacao de conexao
     }
     println!("{:?}", wifi_driver.is_connected());
 
-    
-    
-    
-    // wait for getting an ip address
-    println!("Wait to get an ip address");
+            
     c=0;
     loop {
         c+=1;
